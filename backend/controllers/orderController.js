@@ -52,3 +52,31 @@ export const updateOrderStatus = async (req, res) => {
     return res.json({ success: false, message: error.message });
   }
 };
+
+// Cancel one of the logged-in user's own orders — PUT /api/order/:id/cancel
+const CANCELLABLE_STATUSES = ["Confirmed", "Processing", "Handed to Deliverer"];
+
+export const cancelMyOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await OrderModel.findById(id);
+
+    if (!order) {
+      return res.json({ success: false, message: "Order not found" });
+    }
+    if (order.user_id !== req.userId) {
+      return res.json({ success: false, message: "Not authorized" });
+    }
+    if (order.status === "Cancelled") {
+      return res.json({ success: false, message: "This order is already cancelled" });
+    }
+    if (!CANCELLABLE_STATUSES.includes(order.status)) {
+      return res.json({ success: false, message: `Order can no longer be cancelled once it's ${order.status}` });
+    }
+
+    await OrderModel.cancelAndRestock(id);
+    return res.json({ success: true, message: "Order cancelled" });
+  } catch (error) {
+    return res.json({ success: false, message: error.message });
+  }
+};

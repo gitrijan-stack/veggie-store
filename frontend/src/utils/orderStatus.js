@@ -13,6 +13,12 @@ export const ORDER_STATUSES = [
 export const CANCELLED = "Cancelled";
 export const ALL_STATUSES = [...ORDER_STATUSES, CANCELLED];
 
+// A shopper can cancel their own order up through being handed to the
+// deliverer — once it's actually out for delivery or delivered, it's too
+// late. Keep this in sync with CANCELLABLE_STATUSES in the backend
+// orderController.
+export const CANCELLABLE_STATUSES = ["Confirmed", "Processing", "Handed to Deliverer"];
+
 export const STATUS_ICON = {
   Confirmed: "🧾",
   Processing: "📦",

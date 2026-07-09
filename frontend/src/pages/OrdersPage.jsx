@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
+import toast from "react-hot-toast";
 import { useCart } from "../context/CartContext";
 import {
   ORDER_STATUSES,
   CANCELLED,
+  CANCELLABLE_STATUSES,
   STATUS_ICON,
   statusColor,
   statusStep,
@@ -53,8 +55,27 @@ const TrackingStepper = ({ status }) => {
   );
 };
 
-const OrderCard = ({ order }) => {
+const OrderCard = ({ order, onCancelled }) => {
   const [open, setOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+
+  const canCancel = CANCELLABLE_STATUSES.includes(order.status);
+
+  const handleCancel = async (e) => {
+    e.stopPropagation();
+    if (!window.confirm(`Cancel Order #${order.id}? Any items will be released back to stock.`)) return;
+    setCancelling(true);
+    try {
+      const { data } = await axios.put(`/api/order/${order.id}/cancel`);
+      if (data.success) { toast.success("Order cancelled"); onCancelled(); }
+      else toast.error(data.message || "Couldn't cancel order");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Couldn't cancel order");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   return (
     <div className="bg-white rounded-2xl border border-leaf-100 shadow-sm overflow-hidden">
       <button
@@ -105,6 +126,16 @@ const OrderCard = ({ order }) => {
       >
         {open ? "Hide details" : "View details"}
       </button>
+
+      {canCancel && (
+        <button
+          onClick={handleCancel}
+          disabled={cancelling}
+          className="w-full text-center text-xs font-body font-semibold text-red-500 hover:text-red-600 hover:bg-red-50 py-2.5 border-t border-leaf-50 disabled:opacity-50"
+        >
+          {cancelling ? "Cancelling…" : "Cancel Order"}
+        </button>
+      )}
     </div>
   );
 };
@@ -114,16 +145,21 @@ const OrdersPage = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchOrders = () => {
+    axios
+      .get("/api/order/my-orders")
+      .then(({ data }) => data.success && setOrders(data.orders))
+      .finally(() => setLoading(false));
+  };
+
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
       setLoading(false);
       return;
     }
-    axios
-      .get("/api/order/my-orders")
-      .then(({ data }) => data.success && setOrders(data.orders))
-      .finally(() => setLoading(false));
+    fetchOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, authLoading]);
 
   if (authLoading || loading) {
@@ -161,7 +197,7 @@ const OrdersPage = () => {
         ) : (
           <div className="space-y-4">
             {orders.map((o) => (
-              <OrderCard key={o.id} order={o} />
+              <OrderCard key={o.id} order={o} onCancelled={fetchOrders} />
             ))}
           </div>
         )}

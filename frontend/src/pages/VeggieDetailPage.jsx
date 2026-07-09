@@ -211,7 +211,11 @@ const VeggieDetailPage = () => {
                 <div className={`flex items-center border border-leaf-200 rounded-full overflow-hidden ${outOfStock ? "opacity-40 pointer-events-none" : ""}`}>
                   <button onClick={() => setQty(Math.max(1, qty - 1))} className="w-10 h-10 text-leaf-700 hover:bg-leaf-50 transition font-bold text-lg">−</button>
                   <span className="w-10 text-center font-display font-bold text-bark">{qty}</span>
-                  <button onClick={() => setQty(qty + 1)} className="w-10 h-10 text-leaf-700 hover:bg-leaf-50 transition font-bold text-lg">+</button>
+                  <button
+                    onClick={() => setQty((q) => (veg.stockQty != null ? Math.min(q + 1, veg.stockQty) : q + 1))}
+                    disabled={veg.stockQty != null && qty >= veg.stockQty}
+                    className="w-10 h-10 text-leaf-700 hover:bg-leaf-50 transition font-bold text-lg disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                  >+</button>
                 </div>
                 <button
                   onClick={handleAdd}

@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useCart } from "../context/CartContext";
-import { useVegetables } from "../context/VegetablesContext";
 import CartDrawer from "./CartDrawer";
 import Login from "./Login";
 
@@ -9,17 +8,7 @@ const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { count, setIsOpen, user, setUser, logout, showLogin, setShowLogin } = useCart();
-  const { searchTerm, setSearchTerm } = useVegetables();
   const location = useLocation();
-  const navigate = useNavigate();
-
-  const handleSearchChange = (e) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-    // Typing a search while browsing another page should take the shopper
-    // straight to the Shop page so they can see results immediately.
-    if (value && location.pathname !== "/shop") navigate("/shop");
-  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -49,20 +38,6 @@ const Navbar = () => {
               <span className="text-[9px] font-body font-medium text-leaf-600 uppercase tracking-widest -mt-0.5 block">Fresh Vegetables</span>
             </div>
           </Link>
-
-          {/* Search */}
-          <div className="hidden sm:flex items-center bg-leaf-50 rounded-full px-3 py-1.5 gap-2 border border-leaf-100 focus-within:border-leaf-300 transition w-40 md:w-56 lg:w-64">
-            <svg className="w-4 h-4 text-bark/30 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
-            </svg>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={handleSearchChange}
-              placeholder="Search vegetables..."
-              className="flex-1 bg-transparent text-sm font-body text-bark outline-none placeholder-bark/30 min-w-0"
-            />
-          </div>
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-1">
@@ -135,18 +110,6 @@ const Navbar = () => {
         {/* Mobile Menu */}
         {mobileOpen && (
           <div className="md:hidden bg-cream/98 backdrop-blur border-t border-leaf-100 px-4 py-3 flex flex-col gap-1">
-            <div className="sm:hidden flex items-center bg-leaf-50 rounded-full px-3 py-2 gap-2 border border-leaf-100 focus-within:border-leaf-300 transition mb-2">
-              <svg className="w-4 h-4 text-bark/30 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
-              </svg>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={handleSearchChange}
-                placeholder="Search vegetables..."
-                className="flex-1 bg-transparent text-sm font-body text-bark outline-none placeholder-bark/30 min-w-0"
-              />
-            </div>
             {links.map((l) => (
               <Link
                 key={l.to}

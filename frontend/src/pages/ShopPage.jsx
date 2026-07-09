@@ -5,110 +5,10 @@ import { useVegetables } from "../context/VegetablesContext";
 import { useWishlist } from "../context/WishlistContext";
 import { sortWishlistedFirst } from "../utils/sortWishlisted";
 
-const Sidebar = ({
-  categories,
-  selectedCat,
-  setSelectedCat,
-  maxPrice,
-  setMaxPrice,
-  organicOnly,
-  setOrganicOnly,
-  activeBadges,
-  toggleBadge,
-  badgeOptions,
-  setSearchTerm,
-  setSortBy,
-  setActiveBadges,
-}) => (
-  <aside className="w-full space-y-4">
-    {/* Categories */}
-    <div className="bg-white rounded-2xl p-5 border border-leaf-100 shadow-sm">
-      <h3 className="font-display font-bold text-bark text-sm mb-3">Category</h3>
-      <div className="space-y-1">
-        {categories.map((cat) => (
-          <button
-            key={cat.name}
-            onClick={() => setSelectedCat(cat.name)}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-body transition ${
-              selectedCat === cat.name
-                ? "bg-leaf-600 text-white font-semibold"
-                : "text-bark/70 hover:bg-leaf-50 hover:text-bark"
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <span>{cat.emoji}</span>
-              <span>{cat.name}</span>
-            </span>
-            <span className={`text-xs ${selectedCat === cat.name ? "text-leaf-200" : "text-bark/30"}`}>
-              {cat.count}
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
-
-    {/* Price */}
-    <div className="bg-white rounded-2xl p-5 border border-leaf-100 shadow-sm">
-      <h3 className="font-display font-bold text-bark text-sm mb-3">Max Price</h3>
-      <input
-        type="range"
-        min={1}
-        max={1000}
-        step={1}
-        value={maxPrice}
-        onChange={(e) => setMaxPrice(parseFloat(e.target.value))}
-        className="w-full accent-leaf-600"
-      />
-      <div className="flex justify-between text-xs font-body text-bark/50 mt-1">
-        <span>Rs 1.00</span>
-        <span className="text-leaf-700 font-semibold">Rs {maxPrice.toFixed(2)}</span>
-      </div>
-    </div>
-
-    {/* Filters */}
-    <div className="bg-white rounded-2xl p-5 border border-leaf-100 shadow-sm">
-      <h3 className="font-display font-bold text-bark text-sm mb-3">Filters</h3>
-      <label className="flex items-center gap-3 cursor-pointer group">
-        <div
-          onClick={() => setOrganicOnly(!organicOnly)}
-          className={`w-10 h-5 rounded-full transition-all duration-300 relative flex-shrink-0 ${organicOnly ? "bg-leaf-600" : "bg-gray-200"}`}
-        >
-          <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-300 ${organicOnly ? "left-5" : "left-0.5"}`} />
-        </div>
-        <span className="font-body text-sm text-bark/70 group-hover:text-bark transition">Organic Only</span>
-      </label>
-
-      <div className="flex flex-wrap gap-2 mt-4">
-        {badgeOptions.map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => toggleBadge(opt.value)}
-            className={`px-3 py-1.5 rounded-full text-xs font-body font-semibold border transition ${
-              activeBadges.includes(opt.value)
-                ? "bg-leaf-600 text-white border-leaf-600"
-                : "bg-leaf-50 text-bark/60 border-leaf-100 hover:border-leaf-300 hover:text-bark"
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
-    </div>
-
-    {/* Reset */}
-    <button
-      onClick={() => { setSelectedCat("All"); setSearchTerm(""); setOrganicOnly(false); setMaxPrice(1000); setSortBy("default"); setActiveBadges([]); }}
-      className="w-full text-sm font-body text-bark/40 hover:text-red-400 transition py-2"
-    >
-      Reset all filters
-    </button>
-  </aside>
-);
-
 const ShopPage = () => {
   const [searchParams] = useSearchParams();
   const initialCat = searchParams.get("cat") || "All";
-  const { vegetables, categories, loading, error, refetch, searchTerm, setSearchTerm } = useVegetables();
+  const { vegetables, categories, loading, error, refetch } = useVegetables();
   const { isWishlisted } = useWishlist();
 
   // The vegetable list is fetched once when the app loads. If a seller adds
@@ -122,8 +22,9 @@ const ShopPage = () => {
 
   const [selectedCat, setSelectedCat] = useState(initialCat);
   const [sortBy, setSortBy] = useState("default");
+  const [searchTerm, setSearchTerm] = useState("");
   const [organicOnly, setOrganicOnly] = useState(false);
-  const [maxPrice, setMaxPrice] = useState(1000);
+  const [maxPrice, setMaxPrice] = useState(200);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeBadges, setActiveBadges] = useState([]);
 
@@ -158,21 +59,108 @@ const ShopPage = () => {
     return sortWishlistedFirst(list, isWishlisted);
   }, [vegetables, selectedCat, organicOnly, searchTerm, maxPrice, sortBy, activeBadges, isWishlisted]);
 
-  const sidebarProps = {
-    categories,
-    selectedCat,
-    setSelectedCat,
-    maxPrice,
-    setMaxPrice,
-    organicOnly,
-    setOrganicOnly,
-    activeBadges,
-    toggleBadge,
-    badgeOptions,
-    setSearchTerm,
-    setSortBy,
-    setActiveBadges,
-  };
+  const Sidebar = () => (
+    <aside className="w-full space-y-4">
+      {/* Search */}
+      <div className="bg-white rounded-2xl p-5 border border-leaf-100 shadow-sm">
+        <h3 className="font-display font-bold text-bark text-sm mb-3">Search</h3>
+        <div className="flex items-center bg-leaf-50 rounded-xl px-3 py-2 gap-2 border border-leaf-100 focus-within:border-leaf-300 transition">
+          <svg className="w-4 h-4 text-bark/30 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
+          </svg>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="e.g. broccoli..."
+            className="flex-1 bg-transparent text-sm font-body text-bark outline-none placeholder-bark/30"
+          />
+        </div>
+      </div>
+
+      {/* Categories */}
+      <div className="bg-white rounded-2xl p-5 border border-leaf-100 shadow-sm">
+        <h3 className="font-display font-bold text-bark text-sm mb-3">Category</h3>
+        <div className="space-y-1">
+          {categories.map((cat) => (
+            <button
+              key={cat.name}
+              onClick={() => setSelectedCat(cat.name)}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-body transition ${
+                selectedCat === cat.name
+                  ? "bg-leaf-600 text-white font-semibold"
+                  : "text-bark/70 hover:bg-leaf-50 hover:text-bark"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <span>{cat.emoji}</span>
+                <span>{cat.name}</span>
+              </span>
+              <span className={`text-xs ${selectedCat === cat.name ? "text-leaf-200" : "text-bark/30"}`}>
+                {cat.count}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Price */}
+      <div className="bg-white rounded-2xl p-5 border border-leaf-100 shadow-sm">
+        <h3 className="font-display font-bold text-bark text-sm mb-3">Max Price</h3>
+        <input
+          type="range"
+          min={1}
+          max={200}
+          step={1}
+          value={maxPrice}
+          onChange={(e) => setMaxPrice(parseFloat(e.target.value))}
+          className="w-full accent-leaf-600"
+        />
+        <div className="flex justify-between text-xs font-body text-bark/50 mt-1">
+          <span>Rs 1.00</span>
+          <span className="text-leaf-700 font-semibold">Rs {maxPrice.toFixed(2)}</span>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-2xl p-5 border border-leaf-100 shadow-sm">
+        <h3 className="font-display font-bold text-bark text-sm mb-3">Filters</h3>
+        <label className="flex items-center gap-3 cursor-pointer group">
+          <div
+            onClick={() => setOrganicOnly(!organicOnly)}
+            className={`w-10 h-5 rounded-full transition-all duration-300 relative flex-shrink-0 ${organicOnly ? "bg-leaf-600" : "bg-gray-200"}`}
+          >
+            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-300 ${organicOnly ? "left-5" : "left-0.5"}`} />
+          </div>
+          <span className="font-body text-sm text-bark/70 group-hover:text-bark transition">Organic Only</span>
+        </label>
+
+        <div className="flex flex-wrap gap-2 mt-4">
+          {badgeOptions.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => toggleBadge(opt.value)}
+              className={`px-3 py-1.5 rounded-full text-xs font-body font-semibold border transition ${
+                activeBadges.includes(opt.value)
+                  ? "bg-leaf-600 text-white border-leaf-600"
+                  : "bg-leaf-50 text-bark/60 border-leaf-100 hover:border-leaf-300 hover:text-bark"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Reset */}
+      <button
+        onClick={() => { setSelectedCat("All"); setSearchTerm(""); setOrganicOnly(false); setMaxPrice(200); setSortBy("default"); setActiveBadges([]); }}
+        className="w-full text-sm font-body text-bark/40 hover:text-red-400 transition py-2"
+      >
+        Reset all filters
+      </button>
+    </aside>
+  );
 
   return (
     <div className="bg-cream min-h-screen pt-16">
@@ -189,7 +177,7 @@ const ShopPage = () => {
         {/* Desktop Sidebar */}
         <div className="hidden lg:block w-60 flex-shrink-0">
           <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pr-1">
-            <Sidebar {...sidebarProps} />
+            <Sidebar />
           </div>
         </div>
 
@@ -227,7 +215,7 @@ const ShopPage = () => {
           {/* Mobile sidebar */}
           {sidebarOpen && (
             <div className="lg:hidden mb-6">
-              <Sidebar {...sidebarProps} />
+              <Sidebar />
             </div>
           )}
 

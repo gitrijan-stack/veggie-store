@@ -57,7 +57,8 @@ const CartDrawer = () => {
                   <span className="w-6 text-center text-sm font-semibold font-body">{item.qty}</span>
                   <button
                     onClick={() => updateQty(item.id, item.qty + 1)}
-                    className="w-7 h-7 rounded-full bg-leaf-50 text-leaf-700 flex items-center justify-center hover:bg-leaf-100 transition font-bold text-sm"
+                    disabled={item.stockQty != null && item.qty >= item.stockQty}
+                    className="w-7 h-7 rounded-full bg-leaf-50 text-leaf-700 flex items-center justify-center hover:bg-leaf-100 transition font-bold text-sm disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-leaf-50"
                   >+</button>
                 </div>
                 <button onClick={() => removeItem(item.id)} className="w-7 h-7 rounded-full text-red-400 hover:bg-red-50 hover:text-red-500 transition flex items-center justify-center ml-1">

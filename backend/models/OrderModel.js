@@ -40,8 +40,11 @@ const OrderModel = {
           [orderId, item.id, item.name, item.qty, item.price, item.subtotal]
         );
         await connection.query(
-          "UPDATE vegetables SET stock_qty = GREATEST(stock_qty - ?, 0) WHERE id = ?",
-          [item.qty, item.id]
+          `UPDATE vegetables
+           SET stock_qty = GREATEST(stock_qty - ?, 0),
+               in_stock = (GREATEST(stock_qty - ?, 0) > 0)
+           WHERE id = ?`,
+          [item.qty, item.qty, item.id]
         );
       }
 
@@ -97,8 +100,71 @@ const OrderModel = {
     return orders;
   },
 
+  async findById(orderId) {
+    const [rows] = await pool.query("SELECT * FROM orders WHERE id = ?", [orderId]);
+    return rows[0] || null;
+  },
+
+  // Cancelling (whether the shopper does it or an admin does) returns the
+  // ordered quantities to stock. If an admin later moves the order back
+  // out of Cancelled into an active status, that stock needs to come back
+  // out again — otherwise it would look like double-counted stock that
+  // was never actually reserved for anything. Either way, this is a quiet
+  // stock adjustment — it deliberately does NOT touch restocked_at, so it
+  // never makes an item reappear in the homepage's "Today's Harvest" the
+  // way a genuine new batch would.
   async updateStatus(orderId, status) {
-    await pool.query("UPDATE orders SET status = ? WHERE id = ?", [status, orderId]);
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const [orderRows] = await connection.query("SELECT * FROM orders WHERE id = ? FOR UPDATE", [orderId]);
+      const order = orderRows[0];
+      if (!order) throw new Error("Order not found");
+
+      const wasCancelled = order.status === "Cancelled";
+      const willBeCancelled = status === "Cancelled";
+
+      if (wasCancelled !== willBeCancelled) {
+        const [items] = await connection.query(
+          "SELECT vegetable_id, quantity FROM order_items WHERE order_id = ?",
+          [orderId]
+        );
+        for (const item of items) {
+          if (willBeCancelled) {
+            // Cancelling — release the reserved stock back.
+            await connection.query(
+              "UPDATE vegetables SET stock_qty = stock_qty + ?, in_stock = TRUE WHERE id = ?",
+              [item.quantity, item.vegetable_id]
+            );
+          } else {
+            // Un-cancelling — the order is active again, so take the
+            // stock back out, same as when it was first placed.
+            await connection.query(
+              `UPDATE vegetables
+               SET stock_qty = GREATEST(stock_qty - ?, 0),
+                   in_stock = (GREATEST(stock_qty - ?, 0) > 0)
+               WHERE id = ?`,
+              [item.quantity, item.quantity, item.vegetable_id]
+            );
+          }
+        }
+      }
+
+      await connection.query("UPDATE orders SET status = ? WHERE id = ?", [status, orderId]);
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  },
+
+  // Kept as an explicit alias for the "shopper cancels their own order"
+  // path — cancelling is just a status change to "Cancelled".
+  async cancelAndRestock(orderId) {
+    return this.updateStatus(orderId, "Cancelled");
   },
 };
 

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import axios from "axios";
+import toast from "react-hot-toast";
 
 axios.defaults.baseURL = import.meta.env.VITE_BACKEND_URL;
 axios.defaults.withCredentials = true;
@@ -50,11 +51,24 @@ export const CartProvider = ({ children }) => {
   }, [user]);
 
   // ── Cart logic ──────────────────────────────
+  // A vegetable's stockQty (if known) is the hard ceiling on how many a
+  // shopper can have in their basket — never let the cart quantity exceed
+  // what's actually available.
+  const stockCap = (veg) => (veg.stockQty != null ? veg.stockQty : Infinity);
+
   const addItem = useCallback((veg, qty = 1) => {
+    const cap = stockCap(veg);
+    if (cap <= 0) {
+      toast.error(`${veg.name} is out of stock`);
+      return;
+    }
     setItems((prev) => {
       const existing = prev.find((i) => i.id === veg.id);
-      if (existing) return prev.map((i) => i.id === veg.id ? { ...i, qty: i.qty + qty } : i);
-      return [...prev, { ...veg, qty }];
+      const desired = (existing ? existing.qty : 0) + qty;
+      const nextQty = Math.min(desired, cap);
+      if (desired > cap) toast.error(`Only ${cap} ${veg.name} in stock`);
+      if (existing) return prev.map((i) => (i.id === veg.id ? { ...i, qty: nextQty } : i));
+      return [...prev, { ...veg, qty: nextQty }];
     });
     setIsOpen(true);
   }, []);
@@ -65,7 +79,17 @@ export const CartProvider = ({ children }) => {
 
   const updateQty = useCallback((id, qty) => {
     if (qty < 1) return;
-    setItems((prev) => prev.map((i) => i.id === id ? { ...i, qty } : i));
+    setItems((prev) =>
+      prev.map((i) => {
+        if (i.id !== id) return i;
+        const cap = stockCap(i);
+        if (qty > cap) {
+          toast.error(`Only ${cap} ${i.name} in stock`);
+          return { ...i, qty: cap };
+        }
+        return { ...i, qty };
+      })
+    );
   }, []);
 
   const clearCart = useCallback(() => setItems([]), []);
