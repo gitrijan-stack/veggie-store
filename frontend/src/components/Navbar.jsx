@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import CartDrawer from "./CartDrawer";
 import Login from "./Login";
@@ -9,6 +9,24 @@ const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { count, setIsOpen, user, setUser, logout, showLogin, setShowLogin } = useCart();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const [query, setQuery] = useState(searchParams.get("q") || "");
+
+  useEffect(() => {
+    setQuery(location.pathname === "/shop" ? searchParams.get("q") || "" : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, searchParams]);
+
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setQuery(value);
+    const params = location.pathname === "/shop" ? new URLSearchParams(searchParams) : new URLSearchParams();
+    if (value) params.set("q", value);
+    else params.delete("q");
+    navigate(`/shop${params.toString() ? `?${params.toString()}` : ""}`, { replace: location.pathname === "/shop" });
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -58,6 +76,20 @@ const Navbar = () => {
 
           {/* Right actions */}
           <div className="flex items-center gap-2">
+            {/* Search  */}
+            <div className="hidden md:flex items-center bg-leaf-50 rounded-full px-3 py-1.5 gap-2 border border-leaf-100 focus-within:border-leaf-300 transition w-40 lg:w-52">
+              <svg className="w-3.5 h-3.5 text-bark/30 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
+              </svg>
+              <input
+                type="text"
+                value={query}
+                onChange={handleSearchChange}
+                placeholder="e.g. broccoli..."
+                className="flex-1 bg-transparent text-sm font-body text-bark outline-none placeholder-bark/30 w-full"
+              />
+            </div>
+
             {/* Login / Account */}
             {user ? (
               <>
@@ -110,6 +142,18 @@ const Navbar = () => {
         {/* Mobile Menu */}
         {mobileOpen && (
           <div className="md:hidden bg-cream/98 backdrop-blur border-t border-leaf-100 px-4 py-3 flex flex-col gap-1">
+            <div className="flex items-center bg-leaf-50 rounded-xl px-3 py-2.5 gap-2 border border-leaf-100 focus-within:border-leaf-300 transition mb-2">
+              <svg className="w-4 h-4 text-bark/30 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
+              </svg>
+              <input
+                type="text"
+                value={query}
+                onChange={handleSearchChange}
+                placeholder="e.g. broccoli..."
+                className="flex-1 bg-transparent text-sm font-body text-bark outline-none placeholder-bark/30"
+              />
+            </div>
             {links.map((l) => (
               <Link
                 key={l.to}

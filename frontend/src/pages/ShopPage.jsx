@@ -6,7 +6,7 @@ import { useWishlist } from "../context/WishlistContext";
 import { sortWishlistedFirst } from "../utils/sortWishlisted";
 
 const ShopPage = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const initialCat = searchParams.get("cat") || "All";
   const { vegetables, categories, loading, error, refetch } = useVegetables();
   const { isWishlisted } = useWishlist();
@@ -22,7 +22,10 @@ const ShopPage = () => {
 
   const [selectedCat, setSelectedCat] = useState(initialCat);
   const [sortBy, setSortBy] = useState("default");
-  const [searchTerm, setSearchTerm] = useState("");
+  // Search now lives in the Navbar, which drives it through the ?q= URL
+  // param — reading it straight from searchParams (instead of local state)
+  // keeps ShopPage's filtering in sync with whatever the navbar box shows.
+  const searchTerm = searchParams.get("q") || "";
   const [organicOnly, setOrganicOnly] = useState(false);
   const [maxPrice, setMaxPrice] = useState(200);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -59,25 +62,8 @@ const ShopPage = () => {
     return sortWishlistedFirst(list, isWishlisted);
   }, [vegetables, selectedCat, organicOnly, searchTerm, maxPrice, sortBy, activeBadges, isWishlisted]);
 
-  const Sidebar = () => (
+  const sidebar = (
     <aside className="w-full space-y-4">
-      {/* Search */}
-      <div className="bg-white rounded-2xl p-5 border border-leaf-100 shadow-sm">
-        <h3 className="font-display font-bold text-bark text-sm mb-3">Search</h3>
-        <div className="flex items-center bg-leaf-50 rounded-xl px-3 py-2 gap-2 border border-leaf-100 focus-within:border-leaf-300 transition">
-          <svg className="w-4 h-4 text-bark/30 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
-          </svg>
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="e.g. broccoli..."
-            className="flex-1 bg-transparent text-sm font-body text-bark outline-none placeholder-bark/30"
-          />
-        </div>
-      </div>
-
       {/* Categories */}
       <div className="bg-white rounded-2xl p-5 border border-leaf-100 shadow-sm">
         <h3 className="font-display font-bold text-bark text-sm mb-3">Category</h3>
@@ -154,13 +140,24 @@ const ShopPage = () => {
 
       {/* Reset */}
       <button
-        onClick={() => { setSelectedCat("All"); setSearchTerm(""); setOrganicOnly(false); setMaxPrice(200); setSortBy("default"); setActiveBadges([]); }}
+        onClick={() => {
+          setSelectedCat("All"); setOrganicOnly(false); setMaxPrice(200); setSortBy("default"); setActiveBadges([]);
+          const params = new URLSearchParams(searchParams);
+          params.delete("q");
+          setSearchParams(params);
+        }}
         className="w-full text-sm font-body text-bark/40 hover:text-red-400 transition py-2"
       >
         Reset all filters
       </button>
     </aside>
   );
+  // ^ NOTE: `sidebar` is a plain JSX value (not a component function).
+  // Defining it as a component (e.g. `const Sidebar = () => (...)`) and
+  // rendering it as <Sidebar /> would make React treat it as a brand-new
+  // component type on every ShopPage re-render (e.g. every keystroke in
+  // the search box), unmounting and remounting the whole sidebar and
+  // kicking focus out of the search input after a single character.
 
   return (
     <div className="bg-cream min-h-screen pt-16">
@@ -177,7 +174,7 @@ const ShopPage = () => {
         {/* Desktop Sidebar */}
         <div className="hidden lg:block w-60 flex-shrink-0">
           <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pr-1">
-            <Sidebar />
+            {sidebar}
           </div>
         </div>
 
@@ -215,7 +212,7 @@ const ShopPage = () => {
           {/* Mobile sidebar */}
           {sidebarOpen && (
             <div className="lg:hidden mb-6">
-              <Sidebar />
+              {sidebar}
             </div>
           )}
 

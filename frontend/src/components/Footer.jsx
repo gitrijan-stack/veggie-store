@@ -31,9 +31,9 @@ const Footer = () => {
       </p>
       <div className="flex gap-3">
         {["🐦", "📸", "👥", "▶️"].map((icon, i) => (
-          <a key={i} href="#" className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center hover:bg-leaf-600 transition text-xs">
+          <span key={i} className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center text-xs">
             {icon}
-          </a>
+          </span>
         ))}
       </div>
     </div>

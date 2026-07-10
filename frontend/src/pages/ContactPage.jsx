@@ -1,9 +1,9 @@
 const faqs = [
   { q: "What time do you harvest?", a: "Our farm partners harvest early morning between 4 AM and 7 AM. Your order is packed and dispatched by midday for same-day delivery." },
-  { q: "Can I change or cancel my order?", a: "You can modify or cancel orders up to 10 AM on the day of delivery. After that, we've likely already packed your box." },
-  { q: "Do you offer subscription boxes?", a: "Yes! Our weekly veggie box is the most popular option. You pick what goes in it and get 10% off every order." },
-  { q: "Is all produce organic?", a: "The majority is certified organic. Where it isn't, we clearly label it — and we only work with farms that use no synthetic pesticides regardless of certification." },
-  { q: "What if I'm unhappy with my vegetables?", a: "We offer a no-questions-asked freshness guarantee. Take a photo, send it to us, and we'll refund or replace immediately." },
+  { q: "Can I change or cancel my order?", a: "You can modify or cancel orders." },
+  { q: "Do you offer subscription ?", a: "Currently, we don't offer subscription boxes." },
+  { q: "Is all produce organic?", a: "The majority is certified organic. Where it isn't, we clearly label it." },
+  { q: "Is refund available?", a: "Currently we havent added that feature." },
 ];
 
 const ContactPage = () => {

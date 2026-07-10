@@ -150,9 +150,13 @@ const VeggieDetailPage = () => {
                   alt={veg.name}
                   className="w-64 h-64 object-cover rounded-2xl shadow-xl"
                 />
-                {veg.organic && (
+                {veg.organic ? (
                   <span className="absolute top-3 left-3 bg-leaf-600 text-white text-xs font-body font-semibold px-3 py-1 rounded-full">
                     🌿 Certified Organic
+                  </span>
+                ) : (
+                  <span className="absolute top-3 left-3 bg-soil-500 text-white text-xs font-body font-semibold px-3 py-1 rounded-full">
+                    Non-Organic
                   </span>
                 )}
                 {discount && (
@@ -239,17 +243,17 @@ const VeggieDetailPage = () => {
               </div>
 
               {/* Growing info */}
-              <div className="mt-3 flex items-start gap-3">
+              <div className="mt-3 flex items-center gap-3">
                 <span className="text-xl">{veg.organic ? "🌿" : "🧪"}</span>
-                <p className="font-body text-xs text-bark/60 leading-relaxed">
-                  {veg.organic ? (
-                    <><span className="font-semibold text-bark">Certified organic</span> — grown without synthetic pesticides.</>
-                  ) : veg.pesticidesUsed ? (
-                    <><span className="font-semibold text-bark">Pesticides used:</span> {veg.pesticidesUsed}</>
-                  ) : (
-                    <span className="text-bark/40">No pesticide information provided for this item.</span>
-                  )}
-                </p>
+                {veg.organic ? (
+                  <p className="font-body text-xs text-bark/60 leading-relaxed">
+                    <span className="font-semibold text-bark">Certified organic</span> — grown without synthetic pesticides.
+                  </p>
+                ) : (
+                  <span className="bg-soil-50 border border-soil-200 text-soil-600 text-xs font-body font-semibold px-3 py-1 rounded-full">
+                    Non-Organic
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -258,7 +262,7 @@ const VeggieDetailPage = () => {
         {/* Tabs */}
         <div className="bg-white rounded-2xl border border-leaf-100 shadow-sm mt-6 overflow-hidden">
           <div className="flex border-b border-leaf-100">
-            {["description", "nutrition", "storage", "reviews"].map((t) => (
+            {["description", "storage", "reviews"].map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -273,17 +277,6 @@ const VeggieDetailPage = () => {
           <div className="p-6">
             {tab === "description" && (
               <p className="font-body text-bark/70 text-sm leading-relaxed">{veg.description} Our farming partners follow regenerative agriculture practices, restoring soil health with every season. Each vegetable is hand-picked at optimal ripeness and dispatched within hours of harvest.</p>
-            )}
-            {tab === "nutrition" && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[["Calories", "35 kcal"], ["Protein", "2.8g"], ["Fibre", "2.6g"], ["Vitamin C", "89mg"]].map(([k, v]) => (
-                  <div key={k} className="bg-leaf-50 rounded-xl p-4 text-center border border-leaf-100">
-                    <p className="font-display font-bold text-leaf-700 text-lg">{v}</p>
-                    <p className="font-body text-xs text-bark/50 mt-0.5">{k}</p>
-                    <p className="text-[10px] text-bark/30 font-body">per 100g</p>
-                  </div>
-                ))}
-              </div>
             )}
             {tab === "storage" && (
               <ul className="space-y-3 font-body text-sm text-bark/70">

@@ -419,6 +419,8 @@ const EditVegetableModal = ({ vegetable, onClose, onSaved }) => {
 // ── Orders ───────────────────────────────────────────
 const OrdersTab = ({ orders, onChange }) => {
   const [expanded, setExpanded] = useState(null);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const handleStatusChange = async (order, status) => {
     try {
@@ -430,42 +432,106 @@ const OrdersTab = ({ orders, onChange }) => {
     }
   };
 
+  // YYYY-MM-DD in the browser's local timezone, to match what a <input
+  // type="date"> picker returns — so filtering lines up with the date
+  // shown in each order's timestamp, not a UTC-shifted one.
+  const toLocalDateInput = (d) => {
+    const dt = new Date(d);
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, "0");
+    const day = String(dt.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const clearDates = () => {
+    setDateFrom("");
+    setDateTo("");
+  };
+
+  // Selecting a range covers "multiple dates" at once — from/to are both
+  // inclusive, and either can be left open to mean "no lower/upper bound".
+  const filteredOrders = orders.filter((o) => {
+    const d = toLocalDateInput(o.created_at);
+    if (dateFrom && d < dateFrom) return false;
+    if (dateTo && d > dateTo) return false;
+    return true;
+  });
+  const rangeActive = Boolean(dateFrom || dateTo);
+  const rangeTotal = filteredOrders.reduce((sum, o) => sum + Number(o.total_amount), 0);
+
   if (orders.length === 0) return <p className="font-body text-sm text-bark/40">No orders yet.</p>;
 
   return (
-    <div className="space-y-3">
-      {orders.map((o) => (
-        <div key={o.id} className="bg-white rounded-2xl border border-leaf-100 overflow-hidden">
-          <button onClick={() => setExpanded(expanded === o.id ? null : o.id)} className="w-full flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-left hover:bg-leaf-50/40">
-            <div>
-              <p className="font-body font-semibold text-bark text-sm">Order #{o.id} · {o.customer_name}</p>
-              <p className="font-body text-xs text-bark/40">{o.email} · {new Date(o.created_at).toLocaleString()}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="font-display font-bold text-bark">{currency}{Number(o.total_amount).toFixed(2)}</span>
-              <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${statusColor(o.status)}`}>{o.status}</span>
-            </div>
-          </button>
-          {expanded === o.id && (
-            <div className="border-t border-leaf-50 px-5 py-4 bg-leaf-50/30 grid sm:grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs font-semibold text-bark/50 uppercase tracking-wider mb-1.5">Items</p>
-                <ul className="text-sm font-body text-bark/70 space-y-1">
-                  {o.items?.map((it) => (
-                    <li key={it.id}>{it.quantity} × {it.vegetable_name} — {currency}{Number(it.subtotal).toFixed(2)}</li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-bark/50 uppercase tracking-wider mb-1.5">Update status</p>
-                <select value={o.status} onChange={(e) => handleStatusChange(o, e.target.value)} className="border border-leaf-100 rounded-xl px-3 py-2 text-sm font-body outline-none focus:border-leaf-400">
-                  {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-            </div>
+    <div>
+      {/* Date filter */}
+      <div className="bg-white rounded-2xl border border-leaf-100 p-4 mb-4 space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="text-xs font-body font-semibold text-bark/50 uppercase tracking-wider">From</label>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="border border-leaf-100 rounded-xl px-3 py-2 text-sm font-body outline-none focus:border-leaf-400"
+          />
+          <label className="text-xs font-body font-semibold text-bark/50 uppercase tracking-wider">To</label>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="border border-leaf-100 rounded-xl px-3 py-2 text-sm font-body outline-none focus:border-leaf-400"
+          />
+          {rangeActive && (
+            <button onClick={clearDates} className="text-xs font-body font-semibold text-red-500 hover:text-red-600">
+              Clear
+            </button>
           )}
         </div>
-      ))}
+
+        {rangeActive && (
+          <p className="text-sm font-body text-bark/60">
+            <span className="font-display font-bold text-bark">{filteredOrders.length}</span> order{filteredOrders.length !== 1 ? "s" : ""} in this range · <span className="font-display font-bold text-bark">{currency}{rangeTotal.toFixed(2)}</span> total
+          </p>
+        )}
+      </div>
+
+      {filteredOrders.length === 0 ? (
+        <p className="font-body text-sm text-bark/40">No orders in this range.</p>
+      ) : (
+        <div className="space-y-3">
+          {filteredOrders.map((o) => (
+            <div key={o.id} className="bg-white rounded-2xl border border-leaf-100 overflow-hidden">
+              <button onClick={() => setExpanded(expanded === o.id ? null : o.id)} className="w-full flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-left hover:bg-leaf-50/40">
+                <div>
+                  <p className="font-body font-semibold text-bark text-sm">Order #{o.id} · {o.customer_name}</p>
+                  <p className="font-body text-xs text-bark/40">{o.email} · {new Date(o.created_at).toLocaleString()}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-display font-bold text-bark">{currency}{Number(o.total_amount).toFixed(2)}</span>
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${statusColor(o.status)}`}>{o.status}</span>
+                </div>
+              </button>
+              {expanded === o.id && (
+                <div className="border-t border-leaf-50 px-5 py-4 bg-leaf-50/30 grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-semibold text-bark/50 uppercase tracking-wider mb-1.5">Items</p>
+                    <ul className="text-sm font-body text-bark/70 space-y-1">
+                      {o.items?.map((it) => (
+                        <li key={it.id}>{it.quantity} × {it.vegetable_name} — {currency}{Number(it.subtotal).toFixed(2)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-bark/50 uppercase tracking-wider mb-1.5">Update status</p>
+                    <select value={o.status} onChange={(e) => handleStatusChange(o, e.target.value)} className="border border-leaf-100 rounded-xl px-3 py-2 text-sm font-body outline-none focus:border-leaf-400">
+                      {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
