@@ -10,6 +10,7 @@ import ShopPage from "./pages/ShopPage";
 import VeggieDetailPage from "./pages/VeggieDetailPage";
 import ContactPage from "./pages/ContactPage";
 import CheckoutPage from "./pages/CheckoutPage";
+import KhaltiCallbackPage from "./pages/KhaltiCallbackPage";
 import OrdersPage from "./pages/OrdersPage";
 import SellerLogin from "./components/Seller/SellerLogin";
 import SellerDashboard from "./pages/Seller/SellerDashboard";
@@ -18,7 +19,9 @@ import { Toaster } from "react-hot-toast";
 // Scroll to top on route change
 const ScrollReset = () => {
   const { pathname } = useLocation();
-  useEffect(() => window.scrollTo(0, 0), [pathname]);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
   return null;
 };
 
@@ -46,6 +49,7 @@ const App = () => (
             <Route path="/vegetable/:slug" element={<VeggieDetailPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/checkout/khalti/callback" element={<KhaltiCallbackPage />} />
             <Route path="/orders" element={<OrdersPage />} />
             {/* Admin — 2 lines added, everything else above is unchanged */}
             <Route path="/seller-login" element={<SellerLogin />} />

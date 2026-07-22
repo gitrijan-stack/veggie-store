@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { useCart } from "../context/CartContext";
@@ -24,10 +24,7 @@ const Field = ({ name, label, type = "text", placeholder, value, onChange, error
 );
 
 const CheckoutPage = () => {
-  const { items, total, clearCart, user, setShowLogin } = useCart();
-  const navigate = useNavigate();
-  const [placed, setPlaced] = useState(false);
-  const [orderId, setOrderId] = useState(null);
+  const { items, total, user, setShowLogin } = useCart();
   const [khaltiLoading, setKhaltiLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [form, setForm] = useState({
@@ -98,54 +95,30 @@ const CheckoutPage = () => {
       });
       if (!addrData.success) throw new Error(addrData.message || "Could not save address");
 
-      // Simulate the Khalti payment step, then place the real order
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-
-      const { data: orderData } = await axios.post("/api/order/place", {
+      // 2. Ask our backend to open a Khalti payment (this creates a Pending
+      // order behind the scenes and returns Khalti's hosted payment_url)
+      const { data: khaltiData } = await axios.post("/api/order/khalti/initiate", {
         addressId: addrData.id,
         items: items.map((i) => ({ id: i.id, qty: i.qty })),
-        paymentType: "CARD",
       });
-      if (!orderData.success) throw new Error(orderData.message || "Could not place order");
+      if (!khaltiData.success) throw new Error(khaltiData.message || "Could not start Khalti payment");
 
-      setOrderId(orderData.orderId);
-      setPlaced(true);
-      clearCart();
-      setTimeout(() => navigate("/orders"), 4000);
+      // 3. Hand off to Khalti's hosted payment page. It'll redirect back to
+      // /checkout/khalti/callback once the shopper finishes there.
+      window.location.href = khaltiData.payment_url;
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message || "Failed to place order");
-    } finally {
+      toast.error(err.response?.data?.message || err.message || "Failed to start payment");
       setKhaltiLoading(false);
     }
   };
 
-  if (items.length === 0 && !placed) {
+  if (items.length === 0) {
     return (
       <div className="bg-cream min-h-screen pt-16 flex items-center justify-center">
         <div className="text-center py-20">
           <span className="text-6xl block mb-4">🛒</span>
           <h2 className="font-display font-bold text-bark text-2xl mb-3">Your basket is empty</h2>
           <Link to="/shop" className="btn-primary inline-block mt-2">Browse Vegetables</Link>
-        </div>
-      </div>
-    );
-  }
-
-  if (placed) {
-    return (
-      <div className="bg-cream min-h-screen pt-16 flex items-center justify-center">
-        <div className="text-center py-20 max-w-md px-6">
-          <div className="w-24 h-24 bg-leaf-100 rounded-full flex items-center justify-center text-5xl mx-auto mb-6 animate-float">🎉</div>
-          <h2 className="font-display font-bold text-bark text-3xl mb-3">Order Placed!</h2>
-          <p className="font-body text-bark/60 text-sm leading-relaxed mb-2">
-            Your fresh vegetables are being packed right now. You'll receive a confirmation shortly.
-          </p>
-          {orderId && (
-            <p className="font-body text-bark/40 text-xs mb-2">Order #{orderId}</p>
-          )}
-          <p className="font-body text-leaf-600 text-xs font-semibold">Estimated delivery: Today by 7 PM</p>
-          <Link to="/orders" className="btn-primary inline-block mt-6 text-sm">Track Your Order</Link>
-          <div className="mt-4 text-bark/30 text-xs font-body">Redirecting to your orders...</div>
         </div>
       </div>
     );

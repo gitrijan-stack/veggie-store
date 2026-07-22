@@ -5,6 +5,8 @@ import {
   getAllOrders,
   updateOrderStatus,
   cancelMyOrder,
+  initiateKhaltiPayment,
+  verifyKhaltiPayment,
 } from "../controllers/orderController.js";
 import authUser from "../middlewares/authUser.js";
 import authSeller from "../middlewares/authSeller.js";
@@ -12,6 +14,8 @@ import authSeller from "../middlewares/authSeller.js";
 const orderRouter = express.Router();
 
 orderRouter.post("/place", authUser, placeOrder);
+orderRouter.post("/khalti/initiate", authUser, initiateKhaltiPayment);
+orderRouter.post("/khalti/verify", authUser, verifyKhaltiPayment);
 orderRouter.get("/my-orders", authUser, getUserOrders);
 orderRouter.get("/all", authSeller, getAllOrders);
 orderRouter.put("/:id/status", authSeller, updateOrderStatus);

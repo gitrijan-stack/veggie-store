@@ -149,6 +149,7 @@ CREATE TABLE orders (
     total_amount    DECIMAL(10,2) NOT NULL,
     delivery_fee    DECIMAL(10,2) DEFAULT 0.00,
     payment_type    ENUM('COD', 'CARD', 'ONLINE') NOT NULL DEFAULT 'CARD',
+    khalti_pidx     VARCHAR(50)   NULL,
     is_paid         BOOLEAN       DEFAULT FALSE,
     status          ENUM('Pending','Confirmed','Processing','Handed to Deliverer','Out for Delivery','Delivered','Cancelled')
                     DEFAULT 'Pending',
@@ -158,7 +159,8 @@ CREATE TABLE orders (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (address_id) REFERENCES addresses(id) ON DELETE RESTRICT,
     INDEX idx_orders_user (user_id),
-    INDEX idx_orders_status (status)
+    INDEX idx_orders_status (status),
+    UNIQUE KEY unique_khalti_pidx (khalti_pidx)
 ) ENGINE=InnoDB;
 
 CREATE TABLE order_items (
