@@ -35,7 +35,7 @@ const CheckoutPage = () => {
     address: "",
   });
 
-  const grandTotal = total + (total >= 25 ? 0 : 3.99);
+  const grandTotal = total + (total >= 25 ? 0 : 5);
 
   const validate = () => {
     const e = {};
@@ -199,7 +199,7 @@ const CheckoutPage = () => {
               <div className="flex justify-between text-bark/50">
                 <span>Delivery</span>
                 <span className={total >= 25 ? "text-leaf-600 font-semibold" : ""}>
-                  {total >= 25 ? "Free" : "Rs 3.99"}
+                  {total >= 25 ? "Free" : "Rs 5"}
                 </span>
               </div>
               <div className="flex justify-between font-bold text-bark pt-1.5 border-t border-leaf-50 text-base">

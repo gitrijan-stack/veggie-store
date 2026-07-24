@@ -34,7 +34,7 @@ const Hero = () => {
         <div className="absolute top-24 right-[12%] text-6xl animate-float" style={{animationDelay:"0.3s"}}>🍅</div>
         <div className="absolute top-40 right-[28%] text-4xl animate-float" style={{animationDelay:"0.9s"}}>🥦</div>
         <div className="absolute bottom-32 right-[8%] text-5xl animate-float" style={{animationDelay:"0.6s"}}>🥕</div>
-        <div className="absolute bottom-48 left-[25%] text-3xl animate-float" style={{animationDelay:"1.2s"}}>🧅</div>
+        <div className="absolute bottom-20 left-[25%] text-3xl animate-float" style={{animationDelay:"1.2s"}}>🧅</div>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center py-20">
@@ -62,14 +62,7 @@ const Hero = () => {
           </div>
 
           {/* Stats */}
-          <div className="flex gap-8 mt-10 pt-8 border-t border-leaf-100">
-            {[["1 ", "Farm Partners"], ["12", "Veggie Varieties"], ["5+", "Happy Families"]].map(([num, label]) => (
-              <div key={label}>
-                <p className="font-display font-bold text-2xl text-bark">{num}</p>
-                <p className="font-body text-xs text-bark/40 mt-0.5">{label}</p>
-              </div>
-            ))}
-          </div>
+        
         </div>
 
         {/* Visual card cluster */}

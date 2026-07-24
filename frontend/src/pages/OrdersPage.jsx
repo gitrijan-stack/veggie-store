@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { useCart } from "../context/CartContext";
+import ConfirmModal from "../components/ConfirmModal";
 import {
   ORDER_STATUSES,
   CANCELLED,
@@ -10,6 +11,7 @@ import {
   STATUS_ICON,
   statusColor,
   statusStep,
+  PAYMENT_LABEL,
 } from "../utils/orderStatus";
 
 const currency = `${import.meta.env.VITE_CURRENCY || "Rs"} `;
@@ -58,12 +60,17 @@ const TrackingStepper = ({ status }) => {
 const OrderCard = ({ order, onCancelled }) => {
   const [open, setOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   const canCancel = CANCELLABLE_STATUSES.includes(order.status);
 
-  const handleCancel = async (e) => {
-    e.stopPropagation();
-    if (!window.confirm(`Cancel Order #${order.id}? Any items will be released back to stock.`)) return;
+  const itemsSubtotal = order.items?.length
+    ? order.items.reduce((sum, it) => sum + Number(it.subtotal), 0)
+    : Number(order.total_amount) - Number(order.delivery_fee || 0);
+  const deliveryFee = Number(order.delivery_fee || 0);
+
+  const handleCancel = async () => {
+    setConfirmCancel(false);
     setCancelling(true);
     try {
       const { data } = await axios.put(`/api/order/${order.id}/cancel`);
@@ -110,12 +117,44 @@ const OrderCard = ({ order, onCancelled }) => {
           {order.address && (
             <>
               <p className="text-xs font-semibold text-bark/50 uppercase tracking-wider mb-1">Delivering to</p>
-              <p className="text-sm font-body text-bark/70">
+              <p className="text-sm font-body text-bark/70 mb-3">
                 {order.address.full_name} · {order.address.phone}
                 <br />
                 {order.address.street}
               </p>
             </>
+          )}
+
+          <p className="text-xs font-semibold text-bark/50 uppercase tracking-wider mb-1">Payment</p>
+          <ul className="text-sm font-body text-bark/70 space-y-0.5 mb-1">
+            <li className="flex justify-between">
+              <span>Order ID</span>
+              <span className="font-semibold text-bark/80">#{order.id}</span>
+            </li>
+            <li className="flex justify-between">
+              <span>Payment method</span>
+              <span className="font-semibold text-bark/80">
+                {PAYMENT_LABEL[order.payment_type] || order.payment_type}
+              </span>
+            </li>
+            <li className="flex justify-between pt-1.5 mt-1 border-t border-leaf-50">
+              <span>Subtotal</span>
+              <span>{currency}{itemsSubtotal.toFixed(2)}</span>
+            </li>
+            <li className="flex justify-between">
+              <span>Delivery fee</span>
+              <span>{deliveryFee === 0 ? "Free" : `${currency}${deliveryFee.toFixed(2)}`}</span>
+            </li>
+            <li className="flex justify-between pt-1.5 mt-1 border-t border-leaf-100 text-bark font-semibold">
+              <span>Total amount paid</span>
+              <span>{currency}{Number(order.total_amount).toFixed(2)}</span>
+            </li>
+          </ul>
+
+          {order.khalti_pidx && (
+            <p className="text-xs font-body text-bark/40 mt-2">
+              Transaction ID: <span className="font-semibold text-bark/60">{order.khalti_pidx}</span>
+            </p>
           )}
         </div>
       )}
@@ -129,12 +168,23 @@ const OrderCard = ({ order, onCancelled }) => {
 
       {canCancel && (
         <button
-          onClick={handleCancel}
+          onClick={(e) => { e.stopPropagation(); setConfirmCancel(true); }}
           disabled={cancelling}
           className="w-full text-center text-xs font-body font-semibold text-red-500 hover:text-red-600 hover:bg-red-50 py-2.5 border-t border-leaf-50 disabled:opacity-50"
         >
           {cancelling ? "Cancelling…" : "Cancel Order"}
         </button>
+      )}
+
+      {confirmCancel && (
+        <ConfirmModal
+          title="Cancel this order?"
+          message={`Cancel Order #${order.id}? Any items will be released back to stock.`}
+          confirmLabel="Cancel Order"
+          cancelLabel="Keep Order"
+          onConfirm={handleCancel}
+          onCancel={() => setConfirmCancel(false)}
+        />
       )}
     </div>
   );

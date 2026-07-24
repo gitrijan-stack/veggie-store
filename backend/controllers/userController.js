@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import UserModel from "../models/UserModel.js";
+import OrderModel from "../models/OrderModel.js";
 
 const cookieOptions = () => ({
   httpOnly: true,
@@ -103,6 +104,22 @@ export const getAllUsers = async (req, res) => {
 export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
+
+    const user = await UserModel.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Only allow removal once every order this user has placed is either
+    // Delivered or Cancelled — never while one is still in progress.
+    const hasActiveOrders = await OrderModel.hasActiveOrders(id);
+    if (hasActiveOrders) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot remove this user — they have an order that hasn't been delivered or cancelled yet.",
+      });
+    }
+
     await UserModel.delete(id);
     return res.status(200).json({ success: true, message: "User removed" });
   } catch (error) {

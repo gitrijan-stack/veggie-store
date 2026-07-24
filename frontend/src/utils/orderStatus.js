@@ -45,3 +45,11 @@ export const statusStep = (status) => {
   const i = ORDER_STATUSES.indexOf(status);
   return i === -1 ? 0 : i;
 };
+
+// Human-readable labels for the orders.payment_type column, shown on the
+// customer-facing "My Orders" page.
+export const PAYMENT_LABEL = {
+  COD: "Cash on Delivery",
+  CARD: "Card",
+  ONLINE: "Khalti (Online)",
+};

@@ -61,11 +61,6 @@ const VeggieCard = ({ veg }) => {
           ) : (
             <img src="/images/placeholder.svg" alt="placeholder" className={`h-40 w-40 object-cover rounded-xl ${outOfStock ? "grayscale opacity-60" : ""}`} />
           )}
-          {veg.organic && (
-            <span className="absolute bottom-2 right-2 bg-leaf-600/90 backdrop-blur-sm text-white text-[9px] font-semibold px-2 py-0.5 rounded-full">
-              🌿 Organic
-            </span>
-          )}
           {outOfStock && (
             <div className="absolute inset-0 bg-bark/40 flex items-center justify-center">
               <span className="bg-white/95 text-red-500 text-xs font-body font-bold px-3 py-1.5 rounded-full uppercase tracking-wide">

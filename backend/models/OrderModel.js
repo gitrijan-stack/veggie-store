@@ -23,7 +23,7 @@ const OrderModel = {
         lineItems.push({ ...veg, qty: item.qty, subtotal });
       }
 
-      const deliveryFee = totalAmount >= 25 ? 0 : 3.99;
+      const deliveryFee = totalAmount >= 25 ? 0 : 5;
       totalAmount += deliveryFee;
 
       const [orderResult] = await connection.query(
@@ -93,7 +93,7 @@ const OrderModel = {
         lineItems.push({ ...veg, qty: item.qty, subtotal });
       }
 
-      const deliveryFee = totalAmount >= 25 ? 0 : 3.99;
+      const deliveryFee = totalAmount >= 25 ? 0 : 5;
       totalAmount += deliveryFee;
 
       const [orderResult] = await connection.query(
@@ -243,14 +243,24 @@ const OrderModel = {
     return rows[0] || null;
   },
 
+  // Used to gate user deletion — a user can only be removed once every
+  // order they've placed has reached a terminal state (Delivered or
+  // Cancelled). 'Pending' (unverified Khalti attempts) also counts as
+  // active since it hasn't resolved yet.
+  async hasActiveOrders(userId) {
+    const [rows] = await pool.query(
+      "SELECT COUNT(*) AS count FROM orders WHERE user_id = ? AND status NOT IN ('Delivered', 'Cancelled')",
+      [userId]
+    );
+    return rows[0].count > 0;
+  },
+
   // Cancelling (whether the shopper does it or an admin does) returns the
-  // ordered quantities to stock. If an admin later moves the order back
-  // out of Cancelled into an active status, that stock needs to come back
-  // out again — otherwise it would look like double-counted stock that
-  // was never actually reserved for anything. Either way, this is a quiet
-  // stock adjustment — it deliberately does NOT touch restocked_at, so it
-  // never makes an item reappear in the homepage's "Today's Harvest" the
-  // way a genuine new batch would.
+  // ordered quantities to stock. Cancelled is a one-way terminal state —
+  // same as Delivered — so there's no "un-cancel" path to worry about.
+  // This is a quiet stock adjustment — it deliberately does NOT touch
+  // restocked_at, so it never makes an item reappear in the homepage's
+  // "Today's Harvest" the way a genuine new batch would.
   async updateStatus(orderId, status) {
     const connection = await pool.getConnection();
     try {
@@ -260,32 +270,30 @@ const OrderModel = {
       const order = orderRows[0];
       if (!order) throw new Error("Order not found");
 
-      const wasCancelled = order.status === "Cancelled";
+      // Delivered and Cancelled are both terminal states — once an order
+      // reaches either one, it can't be moved to any other status
+      // (including back to itself). This keeps the seller dashboard's
+      // "status locked" UI honest even if someone hits the API directly.
+      if (order.status === "Delivered") {
+        throw new Error("This order has already been delivered and its status can no longer be changed.");
+      }
+      if (order.status === "Cancelled") {
+        throw new Error("This order has been cancelled and its status can no longer be changed.");
+      }
+
       const willBeCancelled = status === "Cancelled";
 
-      if (wasCancelled !== willBeCancelled) {
+      if (willBeCancelled) {
         const [items] = await connection.query(
           "SELECT vegetable_id, quantity FROM order_items WHERE order_id = ?",
           [orderId]
         );
         for (const item of items) {
-          if (willBeCancelled) {
-            // Cancelling — release the reserved stock back.
-            await connection.query(
-              "UPDATE vegetables SET stock_qty = stock_qty + ?, in_stock = TRUE WHERE id = ?",
-              [item.quantity, item.vegetable_id]
-            );
-          } else {
-            // Un-cancelling — the order is active again, so take the
-            // stock back out, same as when it was first placed.
-            await connection.query(
-              `UPDATE vegetables
-               SET stock_qty = GREATEST(stock_qty - ?, 0),
-                   in_stock = (GREATEST(stock_qty - ?, 0) > 0)
-               WHERE id = ?`,
-              [item.quantity, item.quantity, item.vegetable_id]
-            );
-          }
+          // Cancelling — release the reserved stock back.
+          await connection.query(
+            "UPDATE vegetables SET stock_qty = stock_qty + ?, in_stock = TRUE WHERE id = ?",
+            [item.quantity, item.vegetable_id]
+          );
         }
       }
 

@@ -5,6 +5,8 @@ import toast from "react-hot-toast";
 import { ALL_STATUSES, statusColor } from "../../utils/orderStatus";
 import EmojiPicker from "../../components/Seller/EmojiPicker";
 import BadgePicker from "../../components/Seller/BadgePicker";
+import TagPicker from "../../components/Seller/TagPicker";
+import ConfirmModal from "../../components/ConfirmModal";
 
 const currency = `${import.meta.env.VITE_CURRENCY || "Rs"} `;
 const TABS = [
@@ -17,7 +19,7 @@ const TABS = [
 const emptyVeg = {
   categoryId: "", name: "", emoji: "🥕", description: "",
   price: "", originalPrice: "", unit: "1 piece", stockQty: 100,
-  isOrganic: false, pesticidesUsed: "", imageUrl: "", badge: "", badgeColor: "bg-leaf-600", tags: "",
+  imageUrl: "", badge: "", badgeColor: "", tags: [],
 };
 
 /**
@@ -95,7 +97,7 @@ const SellerDashboard = () => {
         <VegetablesTab vegetables={vegetables} categories={categories} onChange={refreshAll} />
       )}
       {tab === "orders" && <OrdersTab orders={orders} onChange={refreshAll} />}
-      {tab === "users" && <UsersTab users={users} onChange={refreshAll} />}
+      {tab === "users" && <UsersTab users={users} orders={orders} onChange={refreshAll} />}
     </div>
   );
 };
@@ -149,8 +151,7 @@ const VegetablesTab = ({ vegetables, categories, onChange }) => {
         originalPrice: form.originalPrice ? Number(form.originalPrice) : null,
         stockQty: Number(form.stockQty) || 0,
         badge: form.badge || null,
-        pesticidesUsed: form.isOrganic ? null : (form.pesticidesUsed || null),
-        tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+        tags: form.tags,
       });
       if (data.success) {
         toast.success("Vegetable added");
@@ -167,8 +168,12 @@ const VegetablesTab = ({ vegetables, categories, onChange }) => {
     }
   };
 
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  const requestDelete = (veg) => setConfirmDelete(veg);
+
   const handleDelete = async (veg) => {
-    if (!window.confirm(`Remove "${veg.name}"?`)) return;
+    setConfirmDelete(null);
     try {
       const { data } = await axios.delete(`/api/vegetable/${veg.id}`);
       if (data.success) { toast.success("Vegetable removed"); onChange(); }
@@ -228,33 +233,11 @@ const VegetablesTab = ({ vegetables, categories, onChange }) => {
             <input name="stockQty" type="number" min="0" value={form.stockQty} onChange={handleAddChange} placeholder="Stock qty" className="input" />
           </div>
           <input name="imageUrl" value={form.imageUrl} onChange={handleAddChange} placeholder="Image URL (https://...)" className="input" />
-          <input name="tags" value={form.tags} onChange={handleAddChange} placeholder="Tags, comma separated (e.g. Organic, Immune-Boost)" className="input" />
+          <TagPicker tags={form.tags} onChange={(tags) => setForm((p) => ({ ...p, tags }))} />
 
           <div>
             <p className="font-body text-xs font-semibold text-bark/50 uppercase tracking-wider mb-1.5">Badge</p>
-            <BadgePicker badge={form.badge} badgeColor={form.badgeColor} onChange={({ badge, badgeColor }) => setForm((p) => ({ ...p, badge, badgeColor }))} />
-          </div>
-
-          <div>
-            <label className="flex items-center gap-2 font-body text-sm text-bark mb-2">
-              <input
-                type="checkbox"
-                name="isOrganic"
-                checked={form.isOrganic}
-                onChange={(e) => setForm((p) => ({ ...p, isOrganic: e.target.checked, pesticidesUsed: e.target.checked ? "" : p.pesticidesUsed }))}
-                className="w-4 h-4 accent-leaf-600"
-              />
-              Organic
-            </label>
-            {!form.isOrganic && (
-              <input
-                name="pesticidesUsed"
-                value={form.pesticidesUsed}
-                onChange={handleAddChange}
-                placeholder="Pesticides used (e.g. Neem oil, Pyrethrin)"
-                className="input"
-              />
-            )}
+            <BadgePicker badge={form.badge} onChange={({ badge, badgeColor }) => setForm((p) => ({ ...p, badge, badgeColor }))} />
           </div>
 
           <button type="submit" disabled={saving} className="bg-leaf-600 text-white font-body font-semibold px-6 py-2.5 rounded-full hover:bg-leaf-700 transition disabled:opacity-60">
@@ -307,7 +290,7 @@ const VegetablesTab = ({ vegetables, categories, onChange }) => {
                 </td>
                 <td className="px-4 py-3 text-right">
                   <button onClick={() => setEditing(v)} className="text-leaf-600 font-semibold text-xs px-3 py-1.5 rounded-lg hover:bg-leaf-50 mr-1">Edit</button>
-                  <button onClick={() => handleDelete(v)} className="text-red-500 font-semibold text-xs px-3 py-1.5 rounded-lg hover:bg-red-50">Remove</button>
+                  <button onClick={() => requestDelete(v)} className="text-red-500 font-semibold text-xs px-3 py-1.5 rounded-lg hover:bg-red-50">Remove</button>
                 </td>
               </tr>
             ))}
@@ -316,6 +299,15 @@ const VegetablesTab = ({ vegetables, categories, onChange }) => {
       </div>
 
       {editing && <EditVegetableModal vegetable={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); onChange(); }} />}
+      {confirmDelete && (
+        <ConfirmModal
+          title="Remove vegetable?"
+          message={`Remove "${confirmDelete.name}"? This can't be undone.`}
+          confirmLabel="Remove"
+          onConfirm={() => handleDelete(confirmDelete)}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
       <style>{`.input { width: 100%; border: 1px solid #dcf5dc; border-radius: 0.75rem; padding: 0.6rem 0.9rem; font-size: 0.875rem; outline: none; } .input:focus { border-color: #82d882; }`}</style>
     </div>
   );
@@ -325,9 +317,8 @@ const EditVegetableModal = ({ vegetable, onClose, onSaved }) => {
   const [form, setForm] = useState({
     name: vegetable.name, price: vegetable.price, originalPrice: vegetable.original_price || "",
     stockQty: vegetable.stock_qty, unit: vegetable.unit, description: vegetable.description || "",
-    tags: (vegetable.tags || []).join(", "), imageUrl: vegetable.image_url || "",
-    emoji: vegetable.emoji || "🥕", badge: vegetable.badge || "", badgeColor: vegetable.badge_color || "bg-leaf-600",
-    isOrganic: !!vegetable.is_organic, pesticidesUsed: vegetable.pesticides_used || "",
+    tags: vegetable.tags || [], imageUrl: vegetable.image_url || "",
+    emoji: vegetable.emoji || "🥕", badge: vegetable.badge || "", badgeColor: vegetable.badge_color || "",
   });
   const [saving, setSaving] = useState(false);
   const handleChange = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
@@ -341,8 +332,7 @@ const EditVegetableModal = ({ vegetable, onClose, onSaved }) => {
         originalPrice: form.originalPrice ? Number(form.originalPrice) : null,
         stockQty: Number(form.stockQty), unit: form.unit, description: form.description,
         imageUrl: form.imageUrl, emoji: form.emoji, badge: form.badge || null, badgeColor: form.badgeColor,
-        isOrganic: form.isOrganic, pesticidesUsed: form.isOrganic ? null : (form.pesticidesUsed || null),
-        tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+        tags: form.tags,
       });
       if (data.success) { toast.success("Vegetable updated"); onSaved(); }
       else toast.error(data.message || "Update failed");
@@ -375,32 +365,11 @@ const EditVegetableModal = ({ vegetable, onClose, onSaved }) => {
           {form.imageUrl && (
             <img src={form.imageUrl} alt="Preview" className="w-16 h-16 object-cover rounded-lg border border-leaf-100" onError={(e) => { e.target.style.display = "none"; }} />
           )}
-          <input name="tags" value={form.tags} onChange={handleChange} placeholder="Tags, comma separated (e.g. Organic, Immune-Boost)" className="input" />
+          <TagPicker tags={form.tags} onChange={(tags) => setForm((p) => ({ ...p, tags }))} />
 
           <div>
             <p className="font-body text-xs font-semibold text-bark/50 uppercase tracking-wider mb-1.5">Badge</p>
-            <BadgePicker badge={form.badge} badgeColor={form.badgeColor} onChange={({ badge, badgeColor }) => setForm((p) => ({ ...p, badge, badgeColor }))} />
-          </div>
-
-          <div>
-            <label className="flex items-center gap-2 font-body text-sm text-bark mb-2">
-              <input
-                type="checkbox"
-                checked={form.isOrganic}
-                onChange={(e) => setForm((p) => ({ ...p, isOrganic: e.target.checked, pesticidesUsed: e.target.checked ? "" : p.pesticidesUsed }))}
-                className="w-4 h-4 accent-leaf-600"
-              />
-              Organic
-            </label>
-            {!form.isOrganic && (
-              <input
-                name="pesticidesUsed"
-                value={form.pesticidesUsed}
-                onChange={handleChange}
-                placeholder="Pesticides used (e.g. Neem oil, Pyrethrin)"
-                className="input"
-              />
-            )}
+            <BadgePicker badge={form.badge} onChange={({ badge, badgeColor }) => setForm((p) => ({ ...p, badge, badgeColor }))} />
           </div>
 
           <div className="flex gap-3 pt-1">
@@ -421,8 +390,9 @@ const OrdersTab = ({ orders, onChange }) => {
   const [expanded, setExpanded] = useState(null);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [confirmStatus, setConfirmStatus] = useState(null); // { order, status }
 
-  const handleStatusChange = async (order, status) => {
+  const applyStatusChange = async (order, status) => {
     try {
       const { data } = await axios.put(`/api/order/${order.id}/status`, { status });
       if (data.success) { toast.success(`Order #${order.id} marked ${status}`); onChange(); }
@@ -430,6 +400,25 @@ const OrdersTab = ({ orders, onChange }) => {
     } catch (err) {
       toast.error(err.response?.data?.message || "Update failed");
     }
+  };
+
+  // "Delivered" and "Cancelled" are terminal — once set, the status can
+  // never be changed again (see OrderModel.updateStatus) — so confirm
+  // before locking an order into either state.
+  const handleStatusChange = (order, status) => {
+    if (order.status === "Delivered") {
+      toast.error("This order has already been delivered and can no longer be changed.");
+      return;
+    }
+    if (order.status === "Cancelled") {
+      toast.error("This order has been cancelled and can no longer be changed.");
+      return;
+    }
+    if (status === "Delivered" || status === "Cancelled") {
+      setConfirmStatus({ order, status });
+      return;
+    }
+    applyStatusChange(order, status);
   };
 
   // YYYY-MM-DD in the browser's local timezone, to match what a <input
@@ -462,6 +451,7 @@ const OrdersTab = ({ orders, onChange }) => {
   if (orders.length === 0) return <p className="font-body text-sm text-bark/40">No orders yet.</p>;
 
   return (
+    <>
     <div>
       {/* Date filter */}
       <div className="bg-white rounded-2xl border border-leaf-100 p-4 mb-4 space-y-3">
@@ -522,9 +512,13 @@ const OrdersTab = ({ orders, onChange }) => {
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-bark/50 uppercase tracking-wider mb-1.5">Update status</p>
-                    <select value={o.status} onChange={(e) => handleStatusChange(o, e.target.value)} className="border border-leaf-100 rounded-xl px-3 py-2 text-sm font-body outline-none focus:border-leaf-400">
-                      {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
+                    {o.status === "Delivered" || o.status === "Cancelled" ? (
+                      <p className="text-sm font-body text-bark/40 italic">{o.status} — status locked</p>
+                    ) : (
+                      <select value={o.status} onChange={(e) => handleStatusChange(o, e.target.value)} className="border border-leaf-100 rounded-xl px-3 py-2 text-sm font-body outline-none focus:border-leaf-400">
+                        {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    )}
                   </div>
                 </div>
               )}
@@ -533,13 +527,35 @@ const OrdersTab = ({ orders, onChange }) => {
         </div>
       )}
     </div>
+    {confirmStatus && (
+      <ConfirmModal
+        title={confirmStatus.status === "Cancelled" ? "Cancel this order?" : "Mark as delivered?"}
+        message={
+          confirmStatus.status === "Cancelled"
+            ? `Cancel Order #${confirmStatus.order.id}? Its items will be released back to stock. This can't be undone.`
+            : `Mark Order #${confirmStatus.order.id} as Delivered? Its status can't be changed after this.`
+        }
+        confirmLabel={confirmStatus.status === "Cancelled" ? "Cancel Order" : "Mark Delivered"}
+        cancelLabel="Go Back"
+        onConfirm={() => { applyStatusChange(confirmStatus.order, confirmStatus.status); setConfirmStatus(null); }}
+        onCancel={() => setConfirmStatus(null)}
+      />
+    )}
+    </>
   );
 };
 
 // ── Users ────────────────────────────────────────────
-const UsersTab = ({ users, onChange }) => {
+const UsersTab = ({ users, orders, onChange }) => {
+  // A user can only be removed once every order they've placed is
+  // Delivered or Cancelled — mirrors the backend check in userController.
+  const hasActiveOrders = (userId) =>
+    orders.some((o) => o.user_id === userId && o.status !== "Delivered" && o.status !== "Cancelled");
+
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
   const handleDelete = async (user) => {
-    if (!window.confirm(`Remove ${user.name} (${user.email})?`)) return;
+    setConfirmDelete(null);
     try {
       const { data } = await axios.delete(`/api/user/${user.id}`);
       if (data.success) { toast.success("User removed"); onChange(); }
@@ -552,6 +568,7 @@ const UsersTab = ({ users, onChange }) => {
   if (users.length === 0) return <p className="font-body text-sm text-bark/40">No users yet.</p>;
 
   return (
+    <>
     <div className="bg-white rounded-2xl border border-leaf-100 overflow-x-auto">
       <table className="w-full text-sm font-body">
         <thead>
@@ -563,19 +580,39 @@ const UsersTab = ({ users, onChange }) => {
           </tr>
         </thead>
         <tbody className="divide-y divide-leaf-50">
-          {users.map((u) => (
-            <tr key={u.id} className="hover:bg-leaf-50/50">
-              <td className="px-4 py-3 font-semibold text-bark">{u.name}</td>
-              <td className="px-4 py-3 text-bark/60">{u.email}</td>
-              <td className="px-4 py-3 text-bark/40 text-xs">{new Date(u.created_at).toLocaleDateString()}</td>
-              <td className="px-4 py-3 text-right">
-                <button onClick={() => handleDelete(u)} className="text-red-500 font-semibold text-xs px-3 py-1.5 rounded-lg hover:bg-red-50">Remove</button>
-              </td>
-            </tr>
-          ))}
+          {users.map((u) => {
+            const blocked = hasActiveOrders(u.id);
+            return (
+              <tr key={u.id} className="hover:bg-leaf-50/50">
+                <td className="px-4 py-3 font-semibold text-bark">{u.name}</td>
+                <td className="px-4 py-3 text-bark/60">{u.email}</td>
+                <td className="px-4 py-3 text-bark/40 text-xs">{new Date(u.created_at).toLocaleDateString()}</td>
+                <td className="px-4 py-3 text-right">
+                  <button
+                    onClick={() => setConfirmDelete(u)}
+                    disabled={blocked}
+                    title={blocked ? "This user has an order that hasn't been delivered or cancelled yet" : undefined}
+                    className="text-red-500 font-semibold text-xs px-3 py-1.5 rounded-lg hover:bg-red-50 disabled:text-bark/30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                  >
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
+    {confirmDelete && (
+      <ConfirmModal
+        title="Remove user?"
+        message={`Remove ${confirmDelete.name} (${confirmDelete.email})? This can't be undone.`}
+        confirmLabel="Remove"
+        onConfirm={() => handleDelete(confirmDelete)}
+        onCancel={() => setConfirmDelete(null)}
+      />
+    )}
+    </>
   );
 };
 
